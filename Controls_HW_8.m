@@ -52,7 +52,7 @@ for i = 1:length(v0_values)
 
     new_P = ss(a_mat, b_mat, c_mat, d_mat);
     new_P_tf = tf(new_P);
-    bode(new_P_tf*C_final);
+    bode(feedback(new_P_tf, C_prime)*C_final);
 end
 
 legend("v0 = 5 m/s", "v0 = 4 m/s", "v0 = 6 m/s");
@@ -79,7 +79,7 @@ for i = 1:length(v0_values)
 
     new_P = ss(a_mat, b_mat, c_mat, d_mat);
     new_P_tf = tf(new_P);
-    rlocus(new_P_tf*C_final);
+    rlocus(feedback(new_P_tf,C_prime)*C_final);
 end
 
 legend("v0 = 5 m/s", "v0 = 4 m/s", "v0 = 6 m/s");
@@ -143,10 +143,11 @@ end
 % 2b
 poles = [-2 -10 -1+i  -1-i];
 ss_model = ss(a_mat, b_mat, c_mat, d_mat);
-gains = place(a_mat, b_mat, poles);
+k_gains = place(a_mat, b_mat, poles);
 
-placed_reachable_poles_a_mat = a_mat-b_mat*gains;
+placed_reachable_poles_a_mat = a_mat-b_mat*k_gains;
 new_ss_model = ss(placed_reachable_poles_a_mat, b_mat, c_mat, d_mat);
+k_r = -1/(c_mat*inv(placed_reachable_poles_a_mat)*b_mat);
 
 % 2c
 step_freq = 0.002;
@@ -178,11 +179,62 @@ end
 
 % 3b
 poles = [-4 -20 -2+i -2-i];
-ss_model = ss(a_mat, b_mat, c_mat, d_mat);
-gains = place(a_mat, c_mat', poles);
+plant_ss_model = ss(a_mat, b_mat, c_mat, d_mat);
+l_gains = place(a_mat, c_mat', poles);
 
-placed_observable_poles_a_mat = a_mat-gains'*c_mat;
-new_ss_model = ss(placed_observable_poles_a_mat, b_mat, c_mat, d_mat);
+placed_observable_poles_a_mat = a_mat-l_gains'*c_mat;
+new_observable_ss_model = ss(placed_observable_poles_a_mat, b_mat, c_mat, d_mat);
+k_r = -1/(c_mat*inv(placed_reachable_poles_a_mat)*b_mat);
 
 % 3c
-k_r = -1/(c_mat*inv(placed_reachable_poles_a_mat)*b_mat);
+stacked_a_mat = [placed_reachable_poles_a_mat b_mat*k_gains;...
+    zeros(4) placed_reachable_poles_a_mat - l_gains'*c_mat];
+stacked_b_mat = [b_mat*k_r; zeros(4,1)];
+stacked_c_mat = [c_mat zeros(1,4); -k_gains k_gains];
+stacked_d_mat = [0; k_r];
+fullstate_feedback_ss = ss(stacked_a_mat, stacked_b_mat, stacked_c_mat, stacked_d_mat);
+
+% Step Response
+T = 0:0.001:10;
+U = ones(size(T));
+reference_rad = 0.002;
+
+IC = [0 0 0 0 0 0 0 0; 0 0 0 0 0 reference_rad 0 0];
+
+for row = 1:size(IC, 1)
+    figure;
+    hold on;
+    [y, tOut] = lsim(fullstate_feedback_ss*reference_rad, U, T, IC(row,:)');
+    yyaxis left
+    plot(tOut, y(:,1));
+    ylabel('Angle (millirads)');
+
+
+    yyaxis right
+    plot(tOut, y(:,2))
+    ylabel('Torque (N*m)');
+
+    title('Step Response of a Second-Order System', '\delta^h^a^t(0) =' + " " + string(IC(row,6)));
+    xlabel('Time (s)');
+    legend("Steering Angle Output", "Torque Input");
+end
+
+%% 4
+controller_d_mat = k_r;
+controller_tf = ss(placed_reachable_poles_a_mat - l_gains'*c_mat, l_gains', k_gains, controller_d_mat);
+loop_ss = feedback(plant_ss_model, -controller_tf);
+loop_tf = tf(loop_ss);
+
+figure;
+hold on;
+margin(loop_ss);
+margin(loop_tf);
+legend("State Space", "Frequency Domain");
+hold off;
+
+figure;
+hold on;
+nyquist(loop_ss);
+nyquist(loop_tf);
+legend("State Space", "Frequency Domain");
+hold off;
