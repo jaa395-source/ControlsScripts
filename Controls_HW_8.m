@@ -188,7 +188,7 @@ k_r = -1/(c_mat*inv(placed_reachable_poles_a_mat)*b_mat);
 
 % 3c
 stacked_a_mat = [placed_reachable_poles_a_mat b_mat*k_gains;...
-    zeros(4) placed_reachable_poles_a_mat - l_gains'*c_mat];
+    zeros(4) placed_observable_poles_a_mat];
 stacked_b_mat = [b_mat*k_r; zeros(4,1)];
 stacked_c_mat = [c_mat zeros(1,4); -k_gains k_gains];
 stacked_d_mat = [0; k_r];
@@ -196,15 +196,17 @@ fullstate_feedback_ss = ss(stacked_a_mat, stacked_b_mat, stacked_c_mat, stacked_
 
 % Step Response
 T = 0:0.001:10;
-U = ones(size(T));
 reference_rad = 0.002;
+U = reference_rad*ones(size(T));
 
-IC = [0 0 0 0 0 0 0 0; 0 0 0 0 0 reference_rad 0 0];
+IC = [0 0 0 0 0 0        0 0;...
+      0 0 0 0 0 0.002/10 0 0];
 
 for row = 1:size(IC, 1)
+    row
     figure;
     hold on;
-    [y, tOut] = lsim(fullstate_feedback_ss*reference_rad, U, T, IC(row,:)');
+    [y, tOut, x] = lsim(fullstate_feedback_ss, U, T, IC(row,:)');
     yyaxis left
     plot(tOut, y(:,1));
     ylabel('Angle (millirads)');
@@ -221,7 +223,7 @@ end
 
 %% 4
 controller_d_mat = k_r;
-controller_tf = ss(placed_reachable_poles_a_mat - l_gains'*c_mat, l_gains', k_gains, controller_d_mat);
+controller_tf = ss(placed_reachable_poles_a_mat - l_gains'*c_mat, l_gains', -k_gains, controller_d_mat);
 loop_ss = feedback(plant_ss_model, -controller_tf);
 loop_tf = tf(loop_ss);
 
