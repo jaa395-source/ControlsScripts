@@ -179,9 +179,9 @@ end
 % 3b
 poles = [-4 -20 -2+i -2-i];
 ss_model = ss(a_mat, b_mat, c_mat, d_mat);
-gains = place(a_mat, c_mat', poles);
+gains = place(a_mat, c_mat, poles);
 
-placed_observable_poles_a_mat = a_mat-gains'*c_mat;
+placed_observable_poles_a_mat = a_mat-c_mat*gains;
 new_ss_model = ss(placed_observable_poles_a_mat, b_mat, c_mat, d_mat);
 
 % 3c
