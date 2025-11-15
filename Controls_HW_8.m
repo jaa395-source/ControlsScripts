@@ -200,10 +200,9 @@ reference_rad = 0.002;
 U = reference_rad*ones(size(T));
 
 IC = [0 0 0 0 0 0        0 0;...
-      0 0 0 0 0 0.002/10 0 0];
+    0 0 0 0 0 0.002/10 0 0];
 
 for row = 1:size(IC, 1)
-    row
     figure;
     hold on;
     [y, tOut, x] = lsim(fullstate_feedback_ss, U, T, IC(row,:)');
@@ -223,20 +222,38 @@ end
 
 %% 4
 controller_d_mat = k_r;
-controller_tf = ss(placed_reachable_poles_a_mat - l_gains'*c_mat, l_gains', -k_gains, controller_d_mat);
-loop_ss = feedback(plant_ss_model, -controller_tf);
-loop_tf = tf(loop_ss);
+controller_ss = ss(placed_reachable_poles_a_mat - l_gains'*c_mat, l_gains', -k_gains, controller_d_mat);
+
+
+open_loop_ss = plant_ss_model*controller_ss;
+open_loop_fd = P_final*C_final;
+
+closed_loop_ss = feedback(plant_ss_model, -controller_ss);
+closed_loop_fd = feedback(P_final, C_final);
+
+use_open_loop = true;
+
+if use_open_loop
+    ss_tf = open_loop_ss;
+    fd_tf = open_loop_fd;
+else
+    ss_tf = closed_loop_ss;
+    fd_tf = closed_loop_fd;
+end
 
 figure;
 hold on;
-margin(loop_ss);
-margin(loop_tf);
-legend("State Space", "Frequency Domain");
+bode(ss_tf);
+bode(fd_tf);
+
+[Gm_ss, PM_ss] = margin(ss_tf);
+[Gm_fd, PM_fd] = margin(fd_tf);
+legend("State Space, GM = " + string(Gm_ss) + ", PM = " + string(PM_ss), "Frequency Domain, GM = " + string(Gm_fd) + ", PM = " + string(PM_fd));
 hold off;
 
 figure;
 hold on;
-nyquist(loop_ss);
-nyquist(loop_tf);
+nyquist(ss_tf);
+nyquist(fd_tf);
 legend("State Space", "Frequency Domain");
 hold off;
