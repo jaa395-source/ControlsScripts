@@ -3,17 +3,9 @@
 % xdot = [phi_dot delta_dot phi_ddot delta_ddot];
 % xdot = Ax + Bu
 % y = delta = Cx + Du = [0 1 0 0]x + D[0]
-[M, C1, K0, K2] = matricies();
 v0 = 5;
-a_mat = [0 0 1 0;...
-    0 0 0 1;...
-    -inv(M)*(K0 + K2*v0^2) -inv(M)*C1*v0];
-
-b_mat = [0; 0; inv(M)*[0;1]];
-
-c_mat = [0 1 0 0];
-
-d_mat = [0];
+[M, C1, K0, K2] = matricies();
+[a_mat,b_mat,c_mat,d_mat] = generate_state_space_matricies(M, C1, K0, K2, v0);
 
 %% 1a
 P = ss(a_mat, b_mat, c_mat, d_mat);
@@ -40,17 +32,8 @@ bode(P_final*C_final);
 for i = 1:length(v0_values)
 
     v0_curr = v0_values(i);
-    a_mat = [0 0 1 0;...
-        0 0 0 1;...
-        -inv(M)*(K0 + K2*v0_curr^2) -inv(M)*C1*v0_curr];
-
-    b_mat = [0; 0; inv(M)*[0;1]];
-
-    c_mat = [0 1 0 0];
-
-    d_mat = [0];
-
-    new_P = ss(a_mat, b_mat, c_mat, d_mat);
+    [curr_a_mat, curr_b_mat, curr_c_mat, curr_d_mat] = generate_state_space_matricies(M, C1, K0, K2, v0_curr);
+    new_P = ss(curr_a_mat, curr_b_mat, curr_c_mat, curr_d_mat);
     new_P_tf = tf(new_P);
     bode(feedback(new_P_tf, C_prime)*C_final);
 end
@@ -67,19 +50,11 @@ rlocus(P_final*C_final);
 for i = 1:length(v0_values)
 
     v0_curr = v0_values(i);
-    a_mat = [0 0 1 0;...
-        0 0 0 1;...
-        -inv(M)*(K0 + K2*v0_curr^2) -inv(M)*C1*v0_curr];
-
-    b_mat = [0; 0; inv(M)*[0;1]];
-
-    c_mat = [0 1 0 0];
-
-    d_mat = [0];
-
-    new_P = ss(a_mat, b_mat, c_mat, d_mat);
+    [curr_a_mat, curr_b_mat, curr_c_mat, curr_d_mat] = generate_state_space_matricies(M, C1, K0, K2, v0_curr);
+    new_P = ss(curr_a_mat, curr_b_mat, curr_c_mat, curr_d_mat);
     new_P_tf = tf(new_P);
     rlocus(feedback(new_P_tf,C_prime)*C_final);
+    
 end
 
 legend("v0 = 5 m/s", "v0 = 4 m/s", "v0 = 6 m/s");
@@ -98,17 +73,8 @@ step_freq = 0.002;
 for i = 1:length(v0_values)
 
     v0_curr = v0_values(i);
-    a_mat = [0 0 1 0;...
-        0 0 0 1;...
-        -inv(M)*(K0 + K2*v0_curr^2) -inv(M)*C1*v0_curr];
-
-    b_mat = [0; 0; inv(M)*[0;1]];
-
-    c_mat = [0 1 0 0];
-
-    d_mat = [0];
-
-    new_P = ss(a_mat, b_mat, c_mat, d_mat);
+    [curr_a_mat, curr_b_mat, curr_c_mat, curr_d_mat] = generate_state_space_matricies(M, C1, K0, K2, v0_curr);
+    new_P = ss(curr_a_mat, curr_b_mat, curr_c_mat, curr_d_mat);
     new_P_tf = tf(new_P);
     dc_gain = evalfr(new_P_tf, 0);
     dc_gain = 1/dc_gain;
@@ -121,19 +87,6 @@ end
 
 %% Problem 2
 clear i
-[M, C1, K0, K2] = matricies();
-v0 = 5;
-a_mat = [0 0 1 0;...
-    0 0 0 1;...
-    -inv(M)*(K0 + K2*v0^2) -inv(M)*C1*v0];
-
-b_mat = [0; 0; inv(M)*[0;1]];
-
-c_mat = [0 1 0 0];
-
-d_mat = [0];
-
-
 % 2a
 reachability_mat = [b_mat a_mat*b_mat a_mat^2*b_mat  a_mat^3*b_mat];
 if rank(reachability_mat) == size(reachability_mat, 1)
@@ -144,33 +97,16 @@ end
 poles = [-2 -10 -1+i  -1-i];
 ss_model = ss(a_mat, b_mat, c_mat, d_mat);
 k_gains = place(a_mat, b_mat, poles);
-
 placed_reachable_poles_a_mat = a_mat-b_mat*k_gains;
-new_ss_model = ss(placed_reachable_poles_a_mat, b_mat, c_mat, d_mat);
 k_r = -1/(c_mat*inv(placed_reachable_poles_a_mat)*b_mat);
 
 % 2c
 step_freq = 0.002;
-new_ss_tf = tf(new_ss_model);
-dc_gain = evalfr(new_ss_tf, 0);
-dc_gain = 1/dc_gain;
-new_ss_model = new_ss_model*dc_gain;
-step(new_ss_model*step_freq);
+new_ss_model = ss(placed_reachable_poles_a_mat, b_mat, c_mat, d_mat);
+step(new_ss_model*k_r*step_freq);
 
 %% Problem 3
 clear i
-[M, C1, K0, K2] = matricies();
-v0 = 5;
-a_mat = [0 0 1 0;...
-    0 0 0 1;...
-    -inv(M)*(K0 + K2*v0^2) -inv(M)*C1*v0];
-
-b_mat = [0; 0; inv(M)*[0;1]];
-
-c_mat = [0 1 0 0];
-
-d_mat = [0];
-
 % 3a
 observability_mat = [c_mat; c_mat*a_mat; c_mat*a_mat^2;  c_mat*a_mat^3];
 if rank(observability_mat) == size(observability_mat, 1)
@@ -178,17 +114,13 @@ if rank(observability_mat) == size(observability_mat, 1)
 end
 
 % 3b
-poles = [-4 -20 -2+i -2-i];
+poles = [-4 -20 -2+2i -2-2i];
 plant_ss_model = ss(a_mat, b_mat, c_mat, d_mat);
 l_gains = place(a_mat, c_mat', poles);
 
-placed_observable_poles_a_mat = a_mat-l_gains'*c_mat;
-new_observable_ss_model = ss(placed_observable_poles_a_mat, b_mat, c_mat, d_mat);
-k_r = -1/(c_mat*inv(placed_reachable_poles_a_mat)*b_mat);
-
 % 3c
-stacked_a_mat = [placed_reachable_poles_a_mat b_mat*k_gains;...
-    zeros(4) placed_observable_poles_a_mat];
+stacked_a_mat = [a_mat-b_mat*k_gains b_mat*k_gains;...
+    zeros(4) a_mat-l_gains'*c_mat];
 stacked_b_mat = [b_mat*k_r; zeros(4,1)];
 stacked_c_mat = [c_mat zeros(1,4); -k_gains k_gains];
 stacked_d_mat = [0; k_r];
@@ -208,7 +140,7 @@ for row = 1:size(IC, 1)
     [y, tOut, x] = lsim(fullstate_feedback_ss, U, T, IC(row,:)');
     yyaxis left
     plot(tOut, y(:,1));
-    ylabel('Angle (millirads)');
+    ylabel('Angle (rad)');
 
 
     yyaxis right
@@ -222,16 +154,18 @@ end
 
 %% 4
 controller_d_mat = k_r;
-controller_ss = ss(placed_reachable_poles_a_mat - l_gains'*c_mat, l_gains', -k_gains, controller_d_mat);
+controller_d_mat = 0;
+controller_ss = ss(a_mat - k_gains*b_mat - l_gains'*c_mat, l_gains', -k_gains, controller_d_mat);
 
 
 open_loop_ss = plant_ss_model*controller_ss;
-open_loop_fd = P_final*C_final;
+open_loop_fd = P_tf*C_final;
 
 closed_loop_ss = feedback(plant_ss_model, -controller_ss);
 closed_loop_fd = feedback(P_final, C_final);
 
 use_open_loop = true;
+use_nyqlog = true;
 
 if use_open_loop
     ss_tf = open_loop_ss;
@@ -253,7 +187,12 @@ hold off;
 
 figure;
 hold on;
-nyquist(ss_tf);
-nyquist(fd_tf);
+if use_nyqlog
+    nyqlog(tf(ss_tf));
+    nyqlog(fd_tf);
+else
+    nyquist(ss_tf);
+    nyquist(fd_tf);
+end
 legend("State Space", "Frequency Domain");
 hold off;
