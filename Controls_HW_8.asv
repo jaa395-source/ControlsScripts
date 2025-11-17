@@ -61,8 +61,7 @@ legend("v0 = 5 m/s", "v0 = 4 m/s", "v0 = 6 m/s");
 hold off;
 
 % From root loci, v = 6 has poles on the LHP making it still possible to
-% just barely have a stable loop but with the defined K values the system is unstable, this is verified with
-% sisotool. However for v = 4 those same poles are in the
+% just barely have a stable loop but for v = 4 those same poles are in the
 % RHP so it is always unstable
 
 %% 1d
@@ -79,9 +78,13 @@ for i = 1:length(v0_values)
     new_P_tf = tf(new_P);
 
     figure;
+    hold on;
+    if i == 3
+        sisotool()
+        disp("pause")
+    end
     step(feedback(feedback(new_P_tf,C_prime)*C_final, 1));
-    legend("v0 = " + v0_curr + " m/s");
-    title("Step Response");
+    legend("v0 = " + v0_curr + " m/s")
 end
 
 
@@ -160,11 +163,12 @@ hold off;
 
 
 %% 4
-controller_d_mat = 0;
-controller_ss = ss(a_mat-b_mat*k_gains-l_gains'*c_mat, l_gains', -k_gains, controller_d_mat);
+controller_d_mat = k_r;
+%controller_d_mat = 0;
+controller_ss = ss(a_mat-k_gains*b_mat-l_gains'*c_mat, b_mat*k_r, -k_gains, controller_d_mat);
 
 
-open_loop_ss = plant_ss_model*-controller_ss;
+open_loop_ss = plant_ss_model*controller_ss;
 open_loop_fd = P_final*C_final;
 
 closed_loop_ss = feedback(plant_ss_model, -controller_ss);
