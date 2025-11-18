@@ -1,0 +1,36 @@
+%% Problem 1
+A = [0 1; 0 0];
+B = [0; 1];
+C = [1 0];
+D = [0];
+
+state = ss(A, B, C, D);
+
+k_desired_sets = [-1+1i, -1-1i; -sqrt(2), -sqrt(2); -5+1i -5-1i];
+l_desired_set = [-10, -10];
+
+for j = 1:length(k_desired_sets)
+
+    curr_poles = k_desired_sets(j,:);
+    K = acker(A, B, curr_poles);
+    L = acker(A', C', l_desired_set)';
+
+    At = [A-B*K            B*K;
+        zeros(size(A))    A-L*C];
+
+    Bt = [B;
+        zeros(size(B))];
+
+    Ct = [C zeros(size(C))];
+
+    new_sys = ss(At, Bt, Ct, D);
+
+    k_r = -1/(Ct*inv(At)*Bt);
+    final_tf = k_r*
+    final
+    disp("pause")
+
+
+
+end
+

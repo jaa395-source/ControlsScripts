@@ -162,7 +162,9 @@ hold off;
 %% 4
 s = tf('s');
 controller_d_mat = 0;
-controller_ss = ss(a_mat-b_mat*k_gains-l_gains'*c_mat, l_gains', -k_gains, controller_d_mat);
+controller_ss = ss(a_mat-b_mat*k_gains-l_gains'*c_mat, l_gains', k_gains, controller_d_mat);
+open_loop_tf = tf(plant_ss_model)*tf(controller_ss);
+nyqlog(open_loop_tf)
 controller_tf_cl = k_r*tf(controller_ss);
 controller_tf_cl = stacked_c_mat*inv(s*eye(8) - stacked_a_mat)*stacked_b_mat;
 controller_tf_cl = controller_tf_cl(1);
