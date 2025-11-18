@@ -61,7 +61,8 @@ legend("v0 = 5 m/s", "v0 = 4 m/s", "v0 = 6 m/s");
 hold off;
 
 % From root loci, v = 6 has poles on the LHP making it still possible to
-% just barely have a stable loop but for v = 4 those same poles are in the
+% just barely have a stable loop but with the defined K values the system is unstable, this is verified with
+% sisotool. However for v = 4 those same poles are in the
 % RHP so it is always unstable
 
 %% 1d
@@ -78,13 +79,9 @@ for i = 1:length(v0_values)
     new_P_tf = tf(new_P);
 
     figure;
-    hold on;
-    if i == 3
-        sisotool()
-        disp("pause")
-    end
     step(feedback(feedback(new_P_tf,C_prime)*C_final, 1));
-    legend("v0 = " + v0_curr + " m/s")
+    legend("v0 = " + v0_curr + " m/s");
+    title("Step Response");
 end
 
 
@@ -101,7 +98,7 @@ poles = [-2 -10 -1+i  -1-i];
 ss_model = ss(a_mat, b_mat, c_mat, d_mat);
 k_gains = place(a_mat, b_mat, poles);
 placed_reachable_poles_a_mat = a_mat-b_mat*k_gains;
-k_r = -1/(c_mat*inv(placed_reachable_poles_a_mat)*b_mat);
+k_r = -1/(c_mat*inv(placed_reachable_poles_a_mat)*b_mat)
 
 % 2c
 step_freq = 0.002;
@@ -163,27 +160,18 @@ hold off;
 
 
 %% 4
-controller_d_mat = k_r;
-%controller_d_mat = 0;
-controller_ss = ss(a_mat-k_gains*b_mat-l_gains'*c_mat, b_mat*k_r, -k_gains, controller_d_mat);
+controller_d_mat = 0;
+controller_ss = ss(a_mat-b_mat*k_gains-l_gains'*c_mat, l_gains', -k_gains, controller_d_mat);
+controller_tf_cl = k_r*tf(controller_ss);
+%controller_tf_cl = -k_gains*inv(s*eye(4) - (a_mat - b_mat*k_gains - l_gains'*c_mat))*l_gains';
 
-
-open_loop_ss = plant_ss_model*controller_ss;
+open_loop_ss = controller_tf_cl/(1 + controller_tf_cl); % plus not negative because it's posive feedback
 open_loop_fd = P_final*C_final;
 
-closed_loop_ss = feedback(plant_ss_model, -controller_ss);
-closed_loop_fd = feedback(P_final, C_final);
-
-use_open_loop = true;
 use_nyqlog = true;
 
-if use_open_loop
-    ss_tf = open_loop_ss;
-    fd_tf = open_loop_fd;
-else
-    ss_tf = closed_loop_ss;
-    fd_tf = closed_loop_fd;
-end
+ss_tf = open_loop_ss;
+fd_tf = open_loop_fd;
 
 figure;
 hold on;

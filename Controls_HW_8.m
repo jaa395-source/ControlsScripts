@@ -98,7 +98,7 @@ poles = [-2 -10 -1+i  -1-i];
 ss_model = ss(a_mat, b_mat, c_mat, d_mat);
 k_gains = place(a_mat, b_mat, poles);
 placed_reachable_poles_a_mat = a_mat-b_mat*k_gains;
-k_r = -1/(c_mat*inv(placed_reachable_poles_a_mat)*b_mat);
+k_r = -1/(c_mat*inv(placed_reachable_poles_a_mat)*b_mat)
 
 % 2c
 step_freq = 0.002;
@@ -160,26 +160,20 @@ hold off;
 
 
 %% 4
+s = tf('s');
 controller_d_mat = 0;
 controller_ss = ss(a_mat-b_mat*k_gains-l_gains'*c_mat, l_gains', -k_gains, controller_d_mat);
+controller_tf_cl = k_r*tf(controller_ss);
+controller_tf_cl = stacked_c_mat*inv(s*eye(8) - stacked_a_mat)*stacked_b_mat;
+controller_tf_cl = controller_tf_cl(1);
 
-
-open_loop_ss = plant_ss_model*-controller_ss;
+open_loop_ss = controller_tf_cl/(1 + controller_tf_cl); % plus not negative because it's posive feedback
 open_loop_fd = P_final*C_final;
 
-closed_loop_ss = feedback(plant_ss_model, -controller_ss);
-closed_loop_fd = feedback(P_final, C_final);
-
-use_open_loop = true;
 use_nyqlog = true;
 
-if use_open_loop
-    ss_tf = open_loop_ss;
-    fd_tf = open_loop_fd;
-else
-    ss_tf = closed_loop_ss;
-    fd_tf = closed_loop_fd;
-end
+ss_tf = open_loop_ss;
+fd_tf = open_loop_fd;
 
 figure;
 hold on;
