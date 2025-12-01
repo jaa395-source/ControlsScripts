@@ -83,11 +83,33 @@ legend(legend_string);
 v0 = 5;
 [M, C, K0, K2] = matricies();
 [a_mat,b_mat,c_mat,d_mat] = generate_state_space_matricies(M, C, K0, K2, v0);
+sys = ss(a_mat, b_mat, c_mat, d_mat);
 Q = [0 0 0 0;
      0 1 0 0;
      0 0 0 0;
      0 0 0 0];
-sys = ss(a_mat, b_mat, c_mat, d_mat);
 R = 1;
 [K,S,P] = lqr(sys,Q,R);
 eig(a_mat - b_mat*K)
+
+% 2b
+sigma_d = 0.1;
+sigma_n = 10^-3;
+mu_d = 0;
+mu_n = 0;
+
+sigma_d = sigma_d^2 - mu_d^2;
+sigma_n = sigma_n^2 - mu_n^2;
+
+[kalmf,L,P] = kalman(sys, sigma_d, sigma_n, 0);
+eig(a_mat - L*c_mat)
+
+% 2c
+controller_d_mat = 0;
+controller_ss = ss(a_mat-b_mat*K-L*c_mat, L, K, controller_d_mat);
+figure;
+rlocus(controller_ss*sys);
+figure;
+margin(controller_ss);
+
+
