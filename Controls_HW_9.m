@@ -16,6 +16,7 @@ bode_legend_string = {};
 
 figure;
 hold on;
+t = [0:0.1:10];
 for j = 1:length(k_desired_sets)
 
     curr_poles = k_desired_sets(j,:);
@@ -34,17 +35,17 @@ for j = 1:length(k_desired_sets)
 
     k_r = -1/(Ct*inv(At)*Bt);
     final_tf = k_r*new_sys;
-    z.("poles_" + string(j)) = initial(feedback(ss(A,B,C,D)*ss(A-B*K-L*C,L,K,0), 1), [1;0;0;0]);
+    z.("poles_" + string(j)) = initial(feedback(ss(A,B,C,D)*ss(A-B*K-L*C,L,K,0), 1), [1;0;0;0], t);
 
-    u.("poles_" + string(j))= initial(feedback(ss(A-B*K-L*C,L,K,0),ss(A,B,C,D)), [1;0;0;0]);
+    u.("poles_" + string(j))= initial(feedback(ss(A-B*K-L*C,L,K,0),ss(A,B,C,D)), [1;0;0;0],t);
     bode(ss(A-B*K-L*C,L,K,0)*ss(A,B,C,D));
-    [Gm_ss, PM_ss] = margin(final_tf);
+    [Gm_ss, PM_ss] = margin(ss(A-B*K-L*C,L,K,0)*ss(A,B,C,D));
     bode_legend_string = horzcat(bode_legend_string, "Poles @ [" + string(curr_poles(1)) + ", " + string(curr_poles(2)) + "], GM = " + string(Gm_ss) + ", PM = " + string(PM_ss));
 end
 legend(bode_legend_string);
 hold off;
 
-%%
+%
 struct_fields = string(fieldnames(z));
 
 z_fig = figure();
@@ -63,10 +64,10 @@ bode_legend_string = {};
 
 for field = 1:length(struct_fields)
     figure(z_fig);
-    plot(z.(struct_fields(field)))
+    plot(t, z.(struct_fields(field)))
 
     figure(u_fig);
-    plot(u.(struct_fields(field)))
+    plot(t, u.(struct_fields(field)))
 
 
     bode_legend_string = horzcat(bode_legend_string, "Poles @ [" + string(k_desired_sets(field, 1)) + ", " + string(k_desired_sets(field, 2)) + "]");
@@ -77,6 +78,11 @@ legend(bode_legend_string);
 
 figure(u_fig);
 legend(bode_legend_string);
+
+% When keeping the damping ratio the same pushing your pole further in the
+% LHP decreased gain margin and phase margin but if you increase your
+% damping ratio the phase margin increases EVEN if your gain margin is
+% decreasing due to a more negative pole
 
 %% Problem 2
 
@@ -107,11 +113,13 @@ eig(a_mat - L*c_mat)
 
 % 2c
 controller_d_mat = 0;
-controller_ss = ss(a_mat-b_mat*K-L*c_mat, L, -K, controller_d_mat);
+controller_ss = ss(a_mat-b_mat*K-L*c_mat, L, K, controller_d_mat);
 figure;
 rlocus(controller_ss*sys);
 figure;
 margin(controller_ss*sys);
+figure;
+step(feedback(controller_ss*sys,1));
 
 %% Problem 3
 
@@ -125,7 +133,7 @@ C_prime = 5; % from sisotool
 P_prime_tf = feedback(P_tf, C_prime);
 z = 2.1797;
 p = [0 -1];
-k = 0.6882;
+k = 0.6886; %0.1 adjusted to decrease overshoot
 C_final = zpk(z, p, k);
 P_final = P_prime_tf;
 
@@ -165,7 +173,7 @@ figure(bode_fig);
 legend(bode_legend_string);
 title("Continuous-Time Closed Loop Bode with Time Delay");
 
-%% b/c
+% b/c
 step_fig = figure();
 hold on;
 bode_fig = figure();
@@ -184,20 +192,20 @@ for i = 1:length(Fs)
     Cd = c2d(C_final, Ti, 'tustin');
     Pd = c2d(P_final, Ti, 'tustin');
 
-    t = 0:Ti:5;
+    t = 0:Ti:70;
     u = 0.002*ones(size(t));
     discrete_ol = (Cd)*(Pd);
     discrete_cl = feedback(discrete_ol, 1);
 
     figure(step_fig);
-    dlsim(tf(discrete_cl), u, t);
+    lsim((discrete_cl), u, t);
 
     figure(bode_fig);
     bode(discrete_ol);
     [Gm, Pm] = margin(discrete_ol);
 
-    step_legend_string = horzcat(step_legend_string, "Time Delay = " + string(td(i)) + " ms");
-    bode_legend_string = horzcat(bode_legend_string, "Time Delay = " + string(td(i)) + " ms, GM = " + string(Gm) + ", PM = " + string(Pm));
+    step_legend_string = horzcat(step_legend_string, "Frequency = " + string(Fs(i)) + " hz");
+    bode_legend_string = horzcat(bode_legend_string, "Frequency = " + string(Fs(i)) + " hz, GM = " + string(Gm) + ", PM = " + string(Pm));
 end
 
 
@@ -208,3 +216,8 @@ legend(step_legend_string);
 figure(bode_fig);
 legend(bode_legend_string);
 title("Discrete-Time Closed Loop Bode");
+
+% The two plots are effectively the same which makes sense the time delays
+% make it so that the system is effectively not responding for that period
+% of time which is a similar dynamic to a discrete system where the system
+% receives updates at a specified interval
